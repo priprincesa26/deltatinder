@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Cinemática</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #240001;
+            --primary-dark: #390002;
+            --panel-bg: rgba(57, 0, 2, 0.5);
+            --border-color-raw: 217, 0, 37;
+            --border-color: rgba(var(--border-color-raw), 0.4);
+            --card-hover-bg: #5c0004;
+
+            --primary: #a90012;
+            --accent: #d90025;
+            --accent-dark: #f33e49;
+            --text-light: #feeded;
+            --tinder-highlight: #f33e49;
+            
+            --accent-green: #4efd54;
+            --known-color: var(--accent-green); /* Green for known variables */
+            --target-color: #f33e49;
+            --unknown-color: #faa6a8;
+        }
+        
+        * {
+            margin: 0; padding: 0; box-sizing: border-box;
+            font-family: 'VT323', monospace;
+            transition: none !important;
+        }
+
+        /* --- Custom Scrollbar --- */
+        ::-webkit-scrollbar { width: 14px; }
+        ::-webkit-scrollbar-track { background: var(--primary-dark); border-left: 2px solid var(--border-color); }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border: 2px solid var(--primary-dark); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-dark); }
+
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        body {
+            background-color: var(--bg-color); color: var(--text-light);
+            text-shadow: 1px 1px 0px var(--primary-dark);
+            display: flex; flex-direction: column;
+        }
+        
+        .app-container { display: flex; flex-direction: column; flex-grow: 1; width: 100%; height: 100%;}
+        
+        .main-layout { display: flex; flex: 1; height: 100%; }
+        
+        .movements-section {
+            width: 300px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-right: 2px solid var(--border-color);
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-main-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .sidebar-footer {
+            flex-shrink: 0;
+            padding: 20px 10px 20px;
+            text-align: center;
+        }
+        
+        #logo-group {
+            margin-bottom: 25px; /* Spacing between logo and social handle */
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        #sidebar-logo-formula { font-size: 34px; }
+        #sidebar-logo-tagline { font-size: 26px; margin-top: -10px; }
+        
+        .social-handle {
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 20px;
+        }
+        .social-handle:hover {
+            color: var(--accent-green);
+        }
+
+        .section-title, #library-panel h2 {
+            font-size: 24px; margin-bottom: 15px; color: var(--accent-dark);
+            display: flex; align-items: center; padding-bottom: 8px;
+            border-bottom: 2px solid var(--border-color); gap: 10px; text-shadow: 2px 2px 0px #000;
+        }
+        
+        .movement-cards { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        
+        .movement-card {
+            background: var(--primary-dark); border-radius: 0; padding: 12px;
+            cursor: pointer; border: 3px solid var(--border-color);
+            display: flex; align-items: center; gap: 12px;
+            box-shadow: 3px 3px 0px var(--bg-color);
+        }
+        #library-btn { margin-top: 20px; border-style: dashed; }
+
+        .movement-card:hover { background: var(--card-hover-bg); border-color: var(--accent-dark); }
+        .movement-card.active { background: var(--accent-green); border-color: var(--text-light); color: var(--primary-dark); text-shadow: none; }
+        .movement-card.active .movement-icon { color: var(--primary-dark); }
+        .movement-icon { font-size: 20px; color: var(--accent-dark); width: 30px; text-align: center; }
+        
+        .content-splitter, #library-panel { flex: 1; display: flex; overflow: hidden; padding: 20px; gap: 20px; }
+        
+        .panel {
+            flex: 1; display: flex; flex-direction: column;
+            background: var(--panel-bg); border: 3px solid var(--border-color);
+            border-radius: 0; padding: 20px; overflow-y: auto;
+            animation: slideInUp 0.6s ease-out;
+            box-shadow: 4px 4px 0px var(--primary-dark);
+            position: relative; /* For the loading overlay */
+        }
+        
+        #library-panel {
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        #library-panel .formula-card {
+            border-left-color: var(--accent);
+        }
+
+        .variables-panel { gap: 20px; }
+        .variables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
+        
+        .variable-label {
+            display: block; position: relative;
+            border: 3px solid var(--primary-dark); border-radius: 0;
+            background: var(--primary-dark); cursor: pointer;
+            box-shadow: 3px 3px 0px var(--bg-color);
+        }
+        .variable-content {
+            padding: 15px 5px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 8px; min-height: 110px;
+            border: 3px solid transparent; background-clip: padding-box;
+            background-color: var(--card-hover-bg); /* Lighter background */
+        }
+        .variable-label:hover .variable-content { border-color: var(--accent); }
+        .variable-label input { display: none; }
+
+        .variable-symbol-display { font-size: 40px; color: var(--accent-dark); line-height: 1; }
+        .variable-name-display { font-size: 16px; color: var(--text-light); text-align: center; line-height: 1.2; height: 38px; display: flex; align-items: center; }
+        
+        input[type="checkbox"]:checked ~ .variable-content { background-color: var(--known-color); border-color: var(--known-color); }
+        input[type="radio"]:checked ~ .variable-content { background-color: var(--target-color); border-color: var(--target-color); }
+        
+        .variable-label:has(input:checked) { border-color: var(--text-light); }
+        
+        input:checked ~ .variable-content .variable-symbol-display,
+        input:checked ~ .variable-content .variable-name-display { color: var(--primary-dark); text-shadow: none; }
+
+        .variable-label.disabled { opacity: 0.4; background: #333; pointer-events: none; border-color: #444; }
+        .variable-label.disabled .variable-content { background-color: var(--primary-dark); }
+
+
+        .action-btn {
+            padding: 16px; border-radius: 0; margin-top: auto;
+            background: var(--accent-dark); color: var(--text-light);
+            border: 3px solid var(--text-light); font-size: 20px;
+            cursor: pointer; text-shadow: 2px 2px 0px #000;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            box-shadow: 3px 3px 0px var(--primary-dark);
+        }
+        .action-btn:hover { background-color: var(--accent); color: var(--primary-dark); text-shadow: none; }
+        .action-btn:active { transform: translateY(2px); box-shadow: 1px 1px 0px var(--primary-dark); }
+        
+        .results-panel .placeholder { padding: 3rem 1rem; text-align: center; opacity: 0.8; font-size: 18px; }
+        .results-title.recommended { color: var(--known-color); }
+        
+        .formula-card {
+            background: var(--panel-bg); border-radius: 0; padding: 1.2rem;
+            margin-bottom: 1rem; border-left: 8px solid var(--unknown-color);
+            opacity: 0; animation: slideInUp 0.5s ease-out forwards;
+            box-shadow: 3px 3px 0px var(--primary-dark);
+        }
+        .formula-card.recommended { border-left-color: var(--known-color); background-color: var(--card-hover-bg); }
+        .formula-card-title { font-size: 18px; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 8px; }
+        .formula-card-title i { color: var(--accent-dark); }
+        .formula-display { font-size: 1.9em; padding: 1rem 0.5rem; text-align: center; }
+
+        /* --- Loading Animation --- */
+        #loading-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            gap: 20px; background: var(--panel-bg);
+            z-index: 10;
+        }
+        .heart-container { position: relative; font-size: 200px; }
+        .empty-heart { color: var(--primary-dark); }
+        .filling-heart {
+            color: var(--target-color);
+            position: absolute; top: 0; left: 0;
+            clip-path: inset(100% 0 0 0); /* Starts hidden */
+        }
+        .heart-container.success .filling-heart {
+            color: var(--accent-green); /* Green on success */
+        }
+        .loading-text { font-size: 24px; text-shadow: 2px 2px 0 #000; }
+        .loading-text.success { color: var(--known-color); }
+        .loading-text.fail { color: var(--tinder-highlight); }
+        
+        @keyframes emptyHeart {
+            from { clip-path: inset(0 0 0 0); }
+            to   { clip-path: inset(100% 0 0 0); }
+        }
+        .filling-heart.emptying {
+            animation: emptyHeart 1s ease-in-out forwards;
+        }
+
+        .hidden { display: none !important; }
+
+        @media (max-width: 1024px) { 
+            .content-splitter, #library-panel { flex-direction: column; } 
+        }
+        @media (max-width: 768px) {
+            html, body { height: auto; overflow: auto; }
+            .main-layout { flex-direction: column; height: auto; }
+            .movements-section { width: 100%; border-right: none; border-bottom: 2px solid var(--border-color); flex-direction: row; }
+            .sidebar-main-content { display: flex; flex-direction: row; align-items: center; overflow-x: auto; overflow-y: hidden; }
+            .section-title { margin-bottom: 0; border-bottom: none; padding-right: 15px;}
+            .movement-cards { display: flex; overflow-x: auto; padding-bottom: 10px; flex-shrink: 0;}
+            #library-btn { margin-top: 0; }
+            .movement-card { flex-shrink: 0; width: 220px; }
+            .sidebar-footer { display: none; } /* Hide footer on mobile */
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="main-layout">
+            <div class="movements-section">
+                <div class="sidebar-main-content">
+                    <h2 class="section-title">Tipos de Movimento</h2>
+                    <div class="movement-cards" id="movement-cards-container"></div>
+                    <div class="movement-card" id="library-btn">
+                        <div class="movement-icon"><i class="fas fa-book-open"></i></div>
+                        <div class="movement-name">Biblioteca</div>
+                    </div>
+                </div>
+                <div class="sidebar-footer">
+                    <div id="logo-group">
+                        <!-- Logo is generated by JavaScript -->
+                    </div>
+                    <a href="https://x.com/studies_lala" class="social-handle" target="_blank" rel="noopener noreferrer">@studies_lala</a>
+                </div>
+            </div>
+            
+            <div class="content-splitter hidden" id="content-splitter">
+                <div class="panel variables-panel">
+                    <div id="known-variables-section">
+                        <h2 class="section-title"><i class="fas fa-check-circle" style="color:var(--known-color)"></i>Variáveis que eu tenho</h2>
+                        <div class="variables-grid" id="known-variables-grid"></div>
+                    </div>
+                    <hr style="border-color: var(--border-color); margin: 20px 0;">
+                    <div id="target-variables-section">
+                        <h2 class="section-title"><i class="fas fa-crosshairs" style="color:var(--target-color)"></i>Variável que eu quero</h2>
+                        <div class="variables-grid" id="target-variables-grid"></div>
+                    </div>
+                </div>
+                
+                <div class="panel results-panel" id="results-panel">
+                    <div id="results-content">
+                        <p class="placeholder">Selecione suas variáveis e clique em "Encontrar Fórmula".</p>
+                    </div>
+                    <div id="loading-overlay" class="hidden">
+                        <div class="heart-container">
+                            <i class="fa-regular fa-heart empty-heart"></i>
+                            <i class="fa-solid fa-heart filling-heart"></i>
+                        </div>
+                        <p class="loading-text" id="percentage-text">0%</p>
+                        <p class="loading-text" id="final-message"></p>
+                    </div>
+                    <button class="action-btn" id="find-formula-btn"><i class="fas fa-calculator"></i>Encontrar Fórmula</button>
+                </div>
+            </div>
+
+            <div class="panel hidden" id="library-panel">
+                <!-- Library content will be generated here -->
+            </div>
+
+            <p class="placeholder" id="main-placeholder" style="flex: 1; align-self: center; font-size: 20px;">Escolha um tipo de movimento para começar.</p>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const physicsData = {
+             mu: { name: 'Movimento Uniforme', icon: 'fa-person-running', variables: ['S', 'S₀', 'V', 't', 'ΔS', 'Δt'], formulas: [ { name: 'Função Horária do Espaço', eq: 'S = S_0 + V \\cdot t', vars: ['S', 'S₀', 'V', 't'] }, { name: 'Velocidade Média', eq: 'V = \\frac{\\Delta S}{\\Delta t}', vars: ['V', 'ΔS', 'Δt'] }, { name: 'Definição de Variação de Espaço', eq: '\\Delta S = S - S_0', vars: ['ΔS', 'S', 'S₀']} ] },
+            muv: { name: 'Mov. Uniforme Variado', icon: 'fa-gauge-high', variables: ['S', 'S₀', 'V', 'V₀', 'a', 't', 'ΔS'], formulas: [ { name: 'Função Horária da Velocidade', eq: 'V = V_0 + a \\cdot t', vars: ['V', 'V₀', 'a', 't'] }, { name: 'Função Horária do Espaço', eq: 'S = S_0 + V_0 \\cdot t + \\frac{a \\cdot t^2}{2}', vars: ['S', 'S₀', 'V₀', 'a', 't'] }, { name: 'Equação de Torricelli', eq: 'V^2 = V_0^2 + 2 \\cdot a \\cdot \\Delta S', vars: ['V', 'V₀', 'a', 'ΔS'] }, { name: 'Definição de Variação de Espaço', eq: '\\Delta S = S - S_0', vars: ['ΔS', 'S', 'S₀']} ] },
+            queda_livre: { name: 'Queda Livre', icon: 'fa-parachute-box', variables: ['H', 'g', 't', 'V'], formulas: [ { name: 'Função Horária da Posição', eq: 'H = \\frac{g \\cdot t^2}{2}', vars: ['H', 'g', 't'] }, { name: 'Função Horária da Velocidade', eq: 'V = g \\cdot t', vars: ['V', 'g', 't'] }, { name: 'Equação de Torricelli', eq: 'V^2 = 2 \\cdot g \\cdot H', vars: ['V', 'g', 'H'] } ] },
+            lancamento_vertical: { name: 'Lançamento Vertical', icon: 'fa-jet-fighter-up', variables: ['H', 'V₀', 't', 'g', 'V', 'Hₘₐₓ', 'tₛ', 'ΔS', 't_{voo}'], formulas: [ { name: 'Função Horária da Posição', eq: 'H = V_0 \\cdot t - \\frac{g \\cdot t^2}{2}', vars: ['H', 'V₀', 't', 'g'] }, { name: 'Função Horária da Velocidade', eq: 'V = V_0 - g \\cdot t', vars: ['V', 'V₀', 'g', 't'] }, { name: 'Equação de Torricelli', eq: 'V^2 = V_0^2 - 2 \\cdot g \\cdot \\Delta S', vars: ['V', 'V₀', 'g', 'ΔS'] }, { name: 'Altura Máxima', eq: 'H_{máx} = \\frac{V_0^2}{2g}', vars: ['Hₘₐₓ', 'V₀', 'g'] }, { name: 'Tempo de Subida', eq: 't_s = \\frac{V_0}{g}', vars: ['tₛ', 'V₀', 'g'] }, { name: 'Tempo de Voo', eq: 't_{voo} = 2 \\cdot \\frac{V_0}{g}', vars: ['t_{voo}', 'V₀', 'g'] } ] },
+            lancamento_horizontal: { name: 'Lançamento Horizontal', icon: 'fa-person-falling-burst', variables: ['t', 'H', 'g', 'D', 'V₀x', 'V_y', 'V', 'S_y'], formulas: [ { name: 'Tempo de Queda', eq: 't = \\sqrt{\\frac{2H}{g}}', vars: ['t', 'H', 'g'] }, { name: 'Alcance Horizontal', eq: 'D = V_{0x} \\cdot t', vars: ['D', 'V₀x', 't'] }, { name: 'Distância Vertical Percorrida', eq: 'S_y = \\frac{g \\cdot t^2}{2}', vars: ['S_y', 'g', 't'] }, { name: 'Velocidade Vertical Final', eq: 'V_y = g \\cdot t', vars: ['V_y', 'g', 't'] }, { name: 'Velocidade Resultante', eq: 'V = \\sqrt{V_{0x}^2 + V_y^2}', vars: ['V', 'V₀x', 'V_y'] } ] },
+            lancamento_obliquo: { name: 'Lançamento Oblíquo', icon: 'fa-volleyball', variables: ['V₀x', 'V₀y', 'V₀', 'θ', 'Hₘₐₓ', 'g', 'tₛ', 't_{voo}', 'D', 'V_{mín}'], formulas: [ { name: 'Decomposição da Vel. Horizontal', eq: 'V_{0x} = V_0 \\cdot \\cos(\\theta)', vars: ['V₀x', 'V₀', 'θ'] }, { name: 'Decomposição da Vel. Vertical', eq: 'V_{0y} = V_0 \\cdot \\sin(\\theta)', vars: ['V₀y', 'V₀', 'θ'] }, { name: 'Altura Máxima', eq: 'H_{máx} = \\frac{V_{0y}^2}{2g}', vars: ['Hₘₐₓ', 'V₀y', 'g'] }, { name: 'Tempo de Subida', eq: 't_s = \\frac{V_{0y}}{g}', vars: ['tₛ', 'V₀y', 'g'] }, { name: 'Tempo de Voo', eq: 't_{voo} = 2 \\cdot \\frac{V_{0y}}{g}', vars: ['t_{voo}', 'V₀y', 'g'] }, { name: 'Alcance (com tempo de voo)', eq: 'D = V_{0x} \\cdot t_{voo}', vars: ['D', 'V₀x', 't_{voo}'] }, { name: 'Alcance (Geral)', eq: 'D = \\frac{V_0^2 \\cdot \\sin(2\\theta)}{g}', vars: ['D', 'V₀', 'θ', 'g'] }, { name: 'Velocidade Mínima', eq: 'V_{mín} = V_{0x}', vars: ['V_{mín}', 'V₀x'] } ] },
+            mcu: { name: 'Mov. Circular Uniforme', icon: 'fa-circle-notch', variables: ['θ', 'S', 'R', 'ω', 'Δθ', 'Δt', 'V', 'T', 'f', 'a_{cp}'], formulas: [ { name: 'Espaço Angular', eq: '\\theta = \\frac{S}{R}', vars: ['θ', 'S', 'R'] }, { name: 'Velocidade Angular Média', eq: '\\omega = \\frac{\\Delta\\theta}{\\Delta t}', vars: ['ω', 'Δθ', 'Δt'] }, { name: 'Relação V e ω', eq: 'V = \\omega \\cdot R', vars: ['V', 'ω', 'R'] }, { name: 'Período e Frequência', eq: 'T = \\frac{1}{f}', vars: ['T', 'f'] }, { name: 'Velocidade Angular (com f)', eq: '\\omega = 2\\pi f', vars: ['ω', 'f'] }, { name: 'Velocidade Linear (com T)', eq: 'V = \\frac{2\\pi R}{T}', vars: ['V', 'R', 'T'] }, { name: 'Aceleração Centrípeta (com V)', eq: 'a_{cp} = \\frac{V^2}{R}', vars: ['a_{cp}', 'V', 'R'] }, { name: 'Aceleração Centrípeta (com ω)', eq: 'a_{cp} = \\omega^2 R', vars: ['a_{cp}', 'ω', 'R'] } ] },
+            transmissao_mc: { name: 'Transmissão de Mov. Circular', icon: 'fa-gears', variables: ['ω₁', 'ω₂', 'V₁', 'V₂', 'R₁', 'R₂', 'f₁', 'f₂', 'N₁', 'N₂', 'T_{encontro}', 'T₁', 'T₂'], formulas: [ { name: 'Eixo Comum (Vel. Angular)', eq: '\\omega_1 = \\omega_2', vars: ['ω₁', 'ω₂'] }, { name: 'Contato (Vel. Linear)', eq: 'V_1 = V_2', vars: ['V₁', 'V₂'] }, { name: 'Contato (Raios e Vel. Angulares)', eq: '\\omega_1 \\cdot R_1 = \\omega_2 \\cdot R_2', vars: ['ω₁', 'R₁', 'ω₂', 'R₂'] }, { name: 'Contato (Raios e Frequências)', eq: 'f_1 \\cdot R_1 = f_2 \\cdot R_2', vars: ['f₁', 'R₁', 'f₂', 'R₂'] }, { name: 'Contato (Dentes e Frequências)', eq: 'f_1 \\cdot N_1 = f_2 \\cdot N_2', vars: ['f₁', 'N₁', 'f₂', 'N₂'] }, { name: 'Encontro (Sentidos Opostos)', eq: 'T_{encontro} = \\frac{T_1 \\cdot T_2}{T_1 + T_2}', vars: ['T_{encontro}', 'T₁', 'T₂'] }, { name: 'Encontro (Mesmo Sentido)', eq: 'T_{encontro} = \\frac{T_1 \\cdot T_2}{|T_1 - T_2|}', vars: ['T_{encontro}', 'T₁', 'T₂'] } ] }
+        };
+        const displayNames = {
+            'S': 'Posição Final', 'S₀': 'Posição Inicial', 'V': 'Velocidade Final', 'V₀': 'Velocidade Inicial', 'a': 'Aceleração', 't': 'Tempo', 'ΔS': 'Variação de Espaço', 'Δt': 'Variação de Tempo', 'H': 'Altura', 'g': 'Acel. Gravidade', 'Hₘₐₓ': 'Altura Máxima', 'tₛ': 'Tempo de Subida',
+            't_{voo}': 'Tempo de Voo', 'D': 'Alcance Horizontal', 'V₀x': 'Vel. Horizontal Inicial', 'V_y': 'Velocidade Vertical', 'S_y': 'Distância Vertical Percorrida', 'V₀y': 'Vel. Vertical Inicial', 'θ': 'Ângulo de Lançamento', 'V_{mín}': 'Velocidade Mínima', 'R': 'Raio', 'ω': 'Velocidade Angular', 'Δθ': 'Variação Angular', 'T': 'Período', 'f': 'Frequência', 'a_{cp}': 'Acel. Centrípeta',
+            'ω₁': 'Vel. Angular (1)', 'ω₂': 'Vel. Angular (2)', 'V₁': 'Velocidade (1)', 'V₂': 'Velocidade (2)', 'R₁': 'Raio (1)', 'R₂': 'Raio (2)', 'f₁': 'Frequência (1)', 'f₂': 'Frequência (2)', 'N₁': 'Nº Dentes (1)', 'N₂': 'Nº Dentes (2)', 'T_{encontro}': 'Tempo de Encontro', 'T₁': 'Período (1)', 'T₂': 'Período (2)'
+        };
+        
+        const movementCardsContainer = document.getElementById('movement-cards-container');
+        const contentSplitter = document.getElementById('content-splitter');
+        const mainPlaceholder = document.getElementById('main-placeholder');
+        const knownGrid = document.getElementById('known-variables-grid');
+        const targetGrid = document.getElementById('target-variables-grid');
+        const findFormulaBtn = document.getElementById('find-formula-btn');
+        const resultsContent = document.getElementById('results-content');
+        const libraryBtn = document.getElementById('library-btn');
+        const libraryPanel = document.getElementById('library-panel');
+        
+        let currentMotionKey = null;
+
+        function init() {
+            renderSidebarLogo();
+
+            Object.keys(physicsData).forEach(key => {
+                const motion = physicsData[key];
+                const card = document.createElement('div');
+                card.className = 'movement-card'; card.dataset.motion = key;
+                card.innerHTML = `<div class="movement-icon"><i class="fas ${motion.icon || 'fa-question'}"></i></div><div class="movement-name">${motion.name}</div>`;
+                card.addEventListener('click', handleMotionSelect);
+                movementCardsContainer.appendChild(card);
+            });
+            findFormulaBtn.addEventListener('click', findAndShowResults);
+            libraryBtn.addEventListener('click', handleLibrarySelect);
+        }
+
+        function renderSidebarLogo() {
+            const logoGroup = document.getElementById('logo-group');
+            if (logoGroup) {
+                const highlightColor = getComputedStyle(document.documentElement).getPropertyValue('--tinder-highlight').trim();
+                const formulaString = `v_m = \\frac{\\Delta s}{\\Delta \\text{t}\\style{color:${highlightColor}}{\\text{inder}}}`;
+                
+                logoGroup.innerHTML = `
+                    <div id="sidebar-logo-formula">$$ ${formulaString} $$</div>
+                    <span id="sidebar-logo-tagline">encontre a sua fórmula ideal!</span>
+                `;
+                if (window.MathJax) {
+                    MathJax.typesetPromise([logoGroup]).catch(console.error);
+                }
+            }
+        }
+        
+        function handleLibrarySelect() {
+            contentSplitter.classList.add('hidden');
+            mainPlaceholder.classList.add('hidden');
+            libraryPanel.classList.remove('hidden');
+
+            document.querySelectorAll('.movement-card.active').forEach(card => card.classList.remove('active'));
+            libraryBtn.classList.add('active');
+
+            renderLibrary();
+        }
+
+        function renderLibrary() {
+            libraryPanel.innerHTML = ''; // Clear previous content
+            Object.values(physicsData).forEach(motion => {
+                const section = document.createElement('div');
+                section.innerHTML = `<h2>${motion.name}</h2>`;
+                motion.formulas.forEach(formula => {
+                    const card = document.createElement('div');
+                    card.className = 'formula-card';
+                    // Render plain formula without colorization
+                    card.innerHTML = `<div class="formula-card-title"><i class="fas fa-flask"></i><span>${formula.name}</span></div><div class="formula-display">$$ ${formula.eq} $$</div>`;
+                    section.appendChild(card);
+                });
+                libraryPanel.appendChild(section);
+            });
+            if (window.MathJax) { MathJax.typesetPromise([libraryPanel]).catch(console.error); }
+        }
+
+        function startLoadingAnimation(isSuccess, onComplete) {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const resultsContent = document.getElementById('results-content');
+            const heartContainer = loadingOverlay.querySelector('.heart-container');
+            const fillingHeart = loadingOverlay.querySelector('.filling-heart');
+            const percentageText = document.getElementById('percentage-text');
+            const finalMessage = document.getElementById('final-message');
+
+            resultsContent.classList.add('hidden');
+            loadingOverlay.classList.remove('hidden');
+            fillingHeart.style.transition = 'none';
+            fillingHeart.style.clipPath = 'inset(100% 0 0 0)';
+            fillingHeart.classList.remove('emptying');
+            heartContainer.classList.remove('success');
+            finalMessage.textContent = '';
+            finalMessage.className = 'loading-text';
+            percentageText.style.display = 'block';
+
+            let percentage = 0;
+            const fillInterval = setInterval(() => {
+                percentage++;
+                fillingHeart.style.transition = 'clip-path 0.02s linear';
+                fillingHeart.style.clipPath = `inset(${100 - percentage}% 0 0 0)`;
+                percentageText.textContent = `${percentage}%`;
+
+                if (percentage >= 100) {
+                    clearInterval(fillInterval);
+                    percentageText.style.display = 'none';
+
+                    if (isSuccess) {
+                        heartContainer.classList.add('success');
+                        finalMessage.textContent = "Existe uma fórmula 100% compatível com você!";
+                        finalMessage.classList.add('success');
+                    } else {
+                        finalMessage.textContent = "Nenhuma fórmula 100% compatível...";
+                        finalMessage.classList.add('fail');
+                        setTimeout(() => fillingHeart.classList.add('emptying'), 500);
+                    }
+                    
+                    setTimeout(() => {
+                        loadingOverlay.classList.add('hidden');
+                        resultsContent.classList.remove('hidden');
+                        onComplete();
+                    }, 2500);
+                }
+            }, 20);
+        }
+        
+        function findAndShowResults() {
+            const known = Array.from(knownGrid.querySelectorAll('input:checked')).map(i => i.dataset.variable);
+            const target = targetGrid.querySelector('input:checked')?.dataset.variable;
+
+            if (!target) {
+                alert('Por favor, selecione a variável que deseja encontrar.');
+                return;
+            }
+
+            const motionFormulas = physicsData[currentMotionKey].formulas;
+            const recommended = motionFormulas.filter(f => f.vars.includes(target) && f.vars.filter(v => v !== target && !known.includes(v)).length === 0);
+            
+            startLoadingAnimation(recommended.length > 0, () => {
+                renderResults(recommended, motionFormulas);
+            });
+        }
+        
+        function handleMotionSelect(event) {
+            libraryPanel.classList.add('hidden');
+            libraryBtn.classList.remove('active');
+            
+            currentMotionKey = event.currentTarget.dataset.motion;
+            
+            document.querySelectorAll('.movement-card.active').forEach(item => item.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            contentSplitter.classList.remove('hidden');
+            mainPlaceholder.classList.add('hidden');
+            
+            populateVariableGrids();
+            clearResults();
+        }
+
+        function populateVariableGrids() {
+            knownGrid.innerHTML = '';
+            targetGrid.innerHTML = '';
+            const variables = physicsData[currentMotionKey].variables;
+            variables.forEach(variable => {
+                knownGrid.appendChild(createVariableBlock(variable, 'known'));
+                targetGrid.appendChild(createVariableBlock(variable, 'target'));
+            });
+            addEventListenersToInputs();
+        }
+        
+        function createVariableBlock(variable, type) {
+            const label = document.createElement('label');
+            label.className = 'variable-label';
+            label.setAttribute('for', `${type}-${variable}`);
+
+            const inputType = type === 'known' ? 'checkbox' : 'radio';
+            const name = type === 'target' ? 'target-variable' : '';
+            const nameAttr = name ? `name="${name}"` : '';
+            
+            const displayName = displayNames[variable] || variable;
+            const symbolDisplay = variable
+                .replace('ₘₐₓ', 'max').replace('_{voo}', 'voo').replace('_{cp}', 'cp')
+                .replace(/_{|}/g, '').replace('₀', '0').replace('ₛ', 's')
+                .replace('₁', '1').replace('₂', '2');
+
+            label.innerHTML = `
+                <input type="${inputType}" id="${type}-${variable}" data-variable="${variable}" ${nameAttr}>
+                <div class="variable-content">
+                    <span class="variable-symbol-display">${symbolDisplay}</span>
+                    <span class="variable-name-display">${displayName}</span>
+                </div>
+            `;
+            return label;
+        }
+
+        function addEventListenersToInputs() {
+            const allInputs = document.querySelectorAll('.variables-panel input');
+            allInputs.forEach(input => input.addEventListener('change', syncVariableStates));
+        }
+
+        function syncVariableStates() {
+            const knownVars = Array.from(knownGrid.querySelectorAll('input:checked')).map(i => i.dataset.variable);
+            const targetVar = targetGrid.querySelector('input:checked')?.dataset.variable;
+
+            targetGrid.querySelectorAll('label').forEach(label => {
+                const input = label.querySelector('input');
+                if (knownVars.includes(input.dataset.variable)) {
+                    label.classList.add('disabled');
+                    input.checked = false;
+                    input.disabled = true;
+                } else {
+                    label.classList.remove('disabled');
+                    input.disabled = false;
+                }
+            });
+
+            knownGrid.querySelectorAll('label').forEach(label => {
+                const input = label.querySelector('input');
+                 if (input.dataset.variable === targetVar) {
+                    label.classList.add('disabled');
+                    input.checked = false;
+                    input.disabled = true;
+                } else {
+                    label.classList.remove('disabled');
+                    input.disabled = false;
+                }
+            });
+        }
+
+        function renderResults(recommended, all) {
+            resultsContent.innerHTML = '';
+            let cardIndex = 0;
+            
+            if (recommended.length > 0) {
+                resultsContent.appendChild(createTitle('Fórmula(s) Recomendada(s)', 'recommended'));
+                recommended.forEach(f => resultsContent.appendChild(createFormulaCard(f, true, cardIndex++)));
+            }
+            
+            const others = all.filter(f => !recommended.includes(f));
+            if (others.length > 0) {
+                const title = createTitle('Outras Fórmulas');
+                if(recommended.length > 0) title.style.marginTop = '1.5rem';
+                resultsContent.appendChild(title);
+                others.forEach(f => resultsContent.appendChild(createFormulaCard(f, false, cardIndex++)));
+            }
+
+            if (resultsContent.innerHTML === '') {
+                 resultsContent.innerHTML = '<p class="placeholder">Nenhuma fórmula encontrada com as variáveis fornecidas. Tente selecionar mais variáveis conhecidas.</p>';
+            }
+            
+            if (window.MathJax) { MathJax.typesetPromise([resultsContent]).catch(console.error); }
+        }
+
+        function createTitle(text, className = '') {
+            const title = document.createElement('h3');
+            title.className = `section-title results-title ${className}`;
+            title.innerHTML = `<i class="fas fa-star"></i> ${text}`;
+            return title;
+        }
+
+        function createFormulaCard(formula, isRecommended, index) {
+            const known = Array.from(knownGrid.querySelectorAll('input:checked')).map(i => i.dataset.variable);
+            const target = targetGrid.querySelector('input:checked')?.dataset.variable;
+
+            const card = document.createElement('div');
+            card.className = `formula-card ${isRecommended ? 'recommended' : ''}`;
+            card.style.animationDelay = `${index * 0.1}s`;
+            const colorizedEq = colorizeEquation(formula.eq, formula.vars, known, target);
+            card.innerHTML = `<div class="formula-card-title"><i class="fas fa-flask"></i><span>${formula.name}</span></div><div class="formula-display">$$ ${colorizedEq} $$</div>`;
+            return card;
+        }
+
+        function colorizeEquation(eqString, vars, known, target) {
+            let colorizedEq = eqString;
+            const sortedVars = [...vars].sort((a, b) => b.length - a.length);
+
+            sortedVars.forEach(v => {
+                const regex = new RegExp(`(?<![a-zA-Z])(${v.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1")})(?![a-zA-Z])`, 'g');
+                let colorVar = '--unknown-color';
+                if (v === target) colorVar = '--target-color';
+                else if (known.includes(v)) colorVar = '--known-color';
+                
+                const color = getComputedStyle(document.documentElement).getPropertyValue(colorVar).trim();
+                const cleanVar = v.replace(/_\{|\}/g, '');
+                colorizedEq = colorizedEq.replace(regex, `\\style{color:${color}; font-weight: bold;}{${cleanVar}}`);
+            });
+            return colorizedEq;
+        }
+        
+        function clearResults() {
+            resultsContent.innerHTML = '<p class="placeholder">Selecione suas variáveis e clique em "Encontrar Fórmula".</p>';
+        }
+
+        init();
+    });
+    </script>
+</body>
+</html>
